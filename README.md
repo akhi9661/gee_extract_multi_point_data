@@ -12,4 +12,5 @@ point_filename = r'path\to\point\shapefile.shp'
 out_df = gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_L2', start_date = '2022-12-01', end_date = '2022-12-31', id_col = 'ID', 
                   bands = ['SR_B1', 'SR_B5'], scale = 30)  
 ```
-Check out: [gee_subset](https://github.com/bluegreen-labs/gee_subset)
+
+Builds on the `gee_subset` package. Check it out [here](https://github.com/bluegreen-labs/gee_subset)
