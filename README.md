@@ -13,4 +13,4 @@ out_df = gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_L2', s
                   bands = ['SR_B1', 'SR_B5'], scale = 30)  
 ```
 ---
-Builds on the `gee_subset` package. Check it out [here](https://github.com/bluegreen-labs/gee_subset)
+Built on `gee_subset` package. Check it out [here](https://github.com/bluegreen-labs/gee_subset)
