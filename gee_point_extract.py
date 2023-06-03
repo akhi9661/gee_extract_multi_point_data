@@ -184,10 +184,4 @@ def gee_point_extract(point_filename, sensor, start_date = '2020-12-01', end_dat
     
     else:
         final_df.to_csv(os.path.join(os.path.dirname(point_filename), f'{sensor}_{start_date}_{end_date}.csv'), index = False)
-        return final_df
-
-# ------------------------------ Example ------------------------------------ #
-
-point_filename = r'path\to\point\shapefile.shp'
-out_df = gee_point_extract(point_filename, sensor = 'Sentinel 2', start_date = '2020-12-01', end_date = '2020-12-31', id_col = 'ID', 
-                  bands = ['B1', 'B8A'], product = None, scale = 10)       
+        return final_df    
