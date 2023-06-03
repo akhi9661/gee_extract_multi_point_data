@@ -1,5 +1,5 @@
 ## Introduction
-A python module that extracts values from GEE image collections for multiple points between two dates. For Landsat 8 [[Level 1](LANDSAT/LC08/C02/T1_TOA)] and Sentinel 2 [[Level 1](COPERNICUS/S2_HARMONIZED)], it also extracts the angle values [solar and sensor azimuth/zenith] and identifies the pixels as cloud or snow. Neverthless, if not present by default, any or all available bands can be specified. 
+A python module that extracts values from GEE image collections for multiple points between two dates and saves it to excel. For Landsat 8 [[Level 1](LANDSAT/LC08/C02/T1_TOA)] and Sentinel 2 [[Level 1](COPERNICUS/S2_HARMONIZED)], it also extracts the angle values [solar and sensor azimuth/zenith] and identifies the pixels as cloud or snow. Neverthless, if not present by default, any or all available bands can be specified. 
 
 ---
 
