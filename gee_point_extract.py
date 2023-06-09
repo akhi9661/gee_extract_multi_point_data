@@ -1,65 +1,5 @@
-def process_bitmask(dataframe):
-    
-    import pandas as pd
-
-    '''
-    This function takes a dataframe with a column named 'QA_PIXEL' or 'QA60' and creates a new column named 'Cloud/Snow' 
-    depending on the binary values of the QA_PIXEL or QA60 column. The function returns a dataframe with the new column.
-
-    Parameters:
-        dataframe (pandas dataframe): A dataframe with a column named 'QA_PIXEL' or 'QA60'
-
-    Returns:
-        updated_dataframe (pandas dataframe): A dataframe with a new column named 'Cloud/Snow'
-    
-    '''
-    
-    def convert_to_dictionary(qa_pixel):
-
-        '''
-        This function takes a QA_PIXEL value and converts it to a dictionary with the binary values of the QA_PIXEL as keys 
-        and the binary values as values.
-
-        Parameters:
-            qa_pixel (int): A QA_PIXEL value
-
-        Returns:
-            binary_dict (dictionary): A dictionary with the binary values of the QA_PIXEL as keys and the binary values as values
-        
-        '''
-
-        binary_str = bin(qa_pixel)[2:].zfill(16)  # Convert to binary string and pad with zeros to 16 bits
-        binary_dict = {f'Bit {i}': bit for i, bit in enumerate(binary_str[::-1])}
-        return binary_dict
-
-    rows_with_bits = []
-    headers = dataframe.columns.tolist()
-    headers.append('Cloud/Snow')
-
-    for index, row in dataframe.iterrows():
-        if 'QA_PIXEL' in headers:
-            mask = 'QA_PIXEL'
-            qa_pixel = int(row['QA_PIXEL'])
-            binary_dict = convert_to_dictionary(qa_pixel)
-            cloud_snow = 'Cloud' if binary_dict['Bit 3'] == '1' else 'Snow' if binary_dict['Bit 5'] == '1' else ''
-            
-        elif 'QA60' in headers:
-            mask = 'QA60'
-            qa_60 = int(row['QA60'])
-            binary_dict = convert_to_dictionary(qa_60)
-            cloud_snow = 'Cloud' if binary_dict['Bit 10'] == '1' or binary_dict['Bit 11'] == '1' else ''
-            
-        else:
-            cloud_snow = ''
-        
-        row['Cloud/Snow'] = cloud_snow
-        rows_with_bits.append(row)
-    
-    updated_dataframe = pd.DataFrame(rows_with_bits, columns = headers)
-    return updated_dataframe
-
-def gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_TOA', start_date = '2020-12-01', end_date = '2020-12-31', id_col = 'FID', 
-                      bands = ['B1', 'B2', 'B3', 'B4'], scale = 10):
+def gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_TOA', start_date = '2020-12-01', end_date = '2020-12-31', id_col = None, 
+                      bands = ['B1', 'B2', 'B3', 'B4'], pad = 1, scale = 30, dest_folder = None):
     
     '''
     This function takes a point shapefile and extracts the pixel values for the specified bands from the specified sensor from 
@@ -67,13 +7,14 @@ def gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_TOA', start
     the point. The function also returns a dataframe with the metadata [angle, QA_mask] for each point. 
 
     Parameters:
-        point_filename (string): The filename of the point shapefile
+        point_filename (string): The filename of the point shapefile, a pandas dataframe or a csv file.
         product (string): The product ID of the sensor. Default is 'LANDSAT/LC08/C02/T1_TOA'. 
-        start_date (string): The start date of the time period of interest. Default is '2020-12-01'
-        end_date (string): The end date of the time period of interest. Default is '2020-12-31'
-        id_col (string): The name of the column in the point shapefile that contains the unique ID for each point. Default is 'FID'
-        bands (list): A list of the bands to extract from the sensor. Default is ['B1', 'B2', 'B3', 'B4']
-        scale (int): The scale of the pixel values. Default is 10
+        start_date (string): The start date of the time period of interest. Format is 'YYYY-MM-DD'. Default is '2020-12-01'
+        end_date (string): The end date of the time period of interest. Format is 'YYYY-MM-DD'. Default is '2020-12-31'
+        id_col (string): The name of the column in the point shapefile that contains the unique ID for each point. Default is 'FID'.
+        bands (list): A list of the bands to extract from the sensor. Default is ['B1', 'B2', 'B3', 'B4'].
+        scale (int): The scale of the pixel values. Default is 30.
+        dest_folder (string): The destination folder to save the output csv file. Default is None.
 
     Returns:
         final_df (pandas dataframe): A dataframe with the pixel, angle, and QA_mask values for each band
@@ -81,7 +22,8 @@ def gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_TOA', start
     '''
     
     import ee
-    import os, re
+    import os
+    import re
     from gee_subset import gee_subset
     import pandas as pd
     from datetime import datetime
@@ -92,42 +34,66 @@ def gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_TOA', start
 
     if not ee.data._initialized:
         ee.Initialize()
+    
+    if dest_folder is not None:
+        opf = os.path.join(dest_folder, f'{product.split("/")[-1]}_{start_date}_{end_date}.csv')
+    print(f'Processing: Fetching satellite data from "{product}" for time period: [{start_date, end_date}]\n')
 
     if product == 'LANDSAT/LC08/C02/T1_TOA':
-        bands.extend(['SAA', 'SZA', 'VAA', 'VZA', 'QA_PIXEL'])
+        extra_bands = ['SAA', 'SZA', 'VAA', 'VZA', 'QA_PIXEL']
+        for band in extra_bands:
+            if band not in bands:
+                bands.append(band)
         scale = 30
 
     if product == 'COPERNICUS/S2_HARMONIZED':
-        bands.append('QA60')
+        extra_bands = ['QA60']
+        for band in extra_bands:
+            if band not in bands:
+                bands.append('QA60')
         scale = 10
 
     if product is None:
         print('Enter a valid product ID')
 
-        
-    points = gpd.read_file(point_filename)
+    if isinstance(point_filename, pd.DataFrame):
+        points = point_filename
+        if dest_folder is None:
+            opf = os.path.join(os.getcwd(), f'{product.split("/")[-1]}_{start_date}_{end_date}.csv')
+    elif isinstance(point_filename, str) and point_filename.endswith('.shp'):
+        points = gpd.read_file(point_filename)
+        if dest_folder is None:
+            opf = os.path.join(os.path.dirname(point_filename), f'{product.split("/")[-1]}_{start_date}_{end_date}.csv')
+    elif isinstance(point_filename, str) and point_filename.endswith('.csv'):
+        points = gpd.read_csv(point_filename)
+        if dest_folder is None:
+            opf = os.path.join(os.path.dirname(point_filename), f'{product.split("/")[-1]}_{start_date}_{end_date}.csv')
+    else:
+        print("Invalid input. Expected either a pandas dataframe or csv/shapefile path.")
+
     count = len(points)
-    site = list(range(0, count, 1))
-    
+    site = list(range(0, count, 1))    
+
     values = []
 
     for i in site:
+        print(start_date, end_date)
         
-        print(f'Extracting for {id_col}: {i}')
-        
+        print(f"Extracting for {id_col}: {points.iloc[i, points.columns.get_loc(id_col)]}")
         df = gee_subset.gee_subset(product = product,
                                    bands = bands,
                                    start_date = start_date,
                                    end_date = end_date,
-                                   latitude = points.iloc[i, 2],
-                                   longitude = points.iloc[i, 1], 
-                                   scale = scale)
+                                   latitude = points.iloc[i, points.columns.get_loc('lat')],
+                                   longitude = points.iloc[i, points.columns.get_loc('lon')], 
+                                   scale = scale, 
+                                   pad = pad)
     
-        sid =  str(points.iloc[i, 0])
+        sid =  str(points.iloc[i, points.columns.get_loc(id_col)])
         df[id_col] = sid
         values.append(df)
         
-    df1 = pd.concat(values, ignore_index = True)
+    df1 = pd.concat(values, ignore_index = True)        
     if 'QA_PIXEL' in bands or 'QA60' in bands:
         final_df = process_bitmask(df1)
     else:
@@ -135,6 +101,7 @@ def gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_TOA', start
     
     if product == 'COPERNICUS/S2_HARMONIZED':
         
+        print(f'Processing: Fetching azimuth and zenith (solar & sensor) from "{product}"\n')
         for band in bands:
             if band == 'QA60':
                 continue  
@@ -170,7 +137,7 @@ def gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_TOA', start
                 df_meta.at[len(df_meta) - 1, f'VZA_{band}'] = zenith.getInfo()
                 
         merged_df = final_df.merge(df_meta, on = id_col)
-        merged_df.to_csv(os.path.join(os.path.dirname(point_filename), f'{product.split("/")[-1]}_{start_date}_{end_date}.csv'), index = False)
+        merged_df.to_csv(opf, index = False)
         return merged_df
         
     elif product == 'LANDSAT/LC08/C02/T1_TOA':
@@ -179,9 +146,9 @@ def gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_TOA', start
         final_df['VAA'] = final_df['VAA'] * 0.01
         final_df['VZA'] = final_df['VZA'] * 0.01
         
-        final_df.to_csv(os.path.join(os.path.dirname(point_filename), f'{product.split("/")[-1]}_{start_date}_{end_date}.csv'), index = False)
+        final_df.to_csv(opf, index = False)
         return final_df
     
     else:
-        final_df.to_csv(os.path.join(os.path.dirname(point_filename), f'{product.split("/")[-1]}_{start_date}_{end_date}.csv'), index = False)
+        final_df.to_csv(opf, index = False)
         return final_df
