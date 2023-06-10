@@ -1,5 +1,5 @@
 def gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_TOA', start_date = '2020-12-01', end_date = '2020-12-31', id_col = None, 
-                      bands = ['B1', 'B2', 'B3', 'B4'], pad = 1, scale = 30, dest_folder = None):
+                      bands = ['B1', 'B2', 'B3', 'B4'], pad = 0, scale = 30, dest_folder = None):
     
     '''
     This function takes a point shapefile and extracts the pixel values for the specified bands from the specified sensor from 
@@ -78,7 +78,7 @@ def gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_TOA', start
 
     for i in site:
        
-        print(f"Extracting for {id_col}: {points.iloc[i, points.columns.get_loc(id_col)]}", end = "\r")
+        print(f"Extracting for {id_col}: {points.iloc[i, points.columns.get_loc(id_col)]}", end = '\r')
         df = gee_subset.gee_subset(product = product,
                                    bands = bands,
                                    start_date = start_date,
