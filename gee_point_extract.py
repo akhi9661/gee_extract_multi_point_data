@@ -79,8 +79,10 @@ def gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_TOA', start
     for i in site:
 
         name = points.iloc[i, points.columns.get_loc(id_col)]
-        os.system('cls' if os.name == 'nt' else 'clear')
-        print(f"Extracting for {id_col}: {name}", end='\r')
+        max_name_length = max(len(name) for name in points[id_col])
+        padding = ' ' * max_name_length
+        print(f"\rExtracting for {id_col}: {name}{padding}", end='')
+
         df = gee_subset.gee_subset(product = product,
                                    bands = bands,
                                    start_date = start_date,
