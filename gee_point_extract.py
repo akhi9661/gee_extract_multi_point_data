@@ -1,5 +1,5 @@
 def gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_TOA', start_date = '2020-12-01', end_date = '2020-12-31', id_col = None, 
-                      bands = ['B1', 'B2', 'B3', 'B4'], pad = 0, scale = 30, dest_folder = None):
+                      bands = ['B1', 'B2', 'B3', 'B4'], pad = 0, scale = 30, dest_folder = None, lat_col_name = 'lat', lon_col_name = 'lon'):
     
     '''
     This function takes a point shapefile and extracts the pixel values for the specified bands from the specified sensor from 
@@ -87,8 +87,8 @@ def gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_TOA', start
                                    bands = bands,
                                    start_date = start_date,
                                    end_date = end_date,
-                                   latitude = points.iloc[i, points.columns.get_loc('lat')],
-                                   longitude = points.iloc[i, points.columns.get_loc('lon')], 
+                                   latitude = points.iloc[i, points.columns.get_loc(lat_col_name)],
+                                   longitude = points.iloc[i, points.columns.get_loc(lon_col_name)], 
                                    scale = scale, 
                                    pad = pad)
     
@@ -115,8 +115,8 @@ def gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_TOA', start
             
         df_meta = pd.DataFrame(columns = cols)
         for index, row in points.iterrows():
-            latitude = row['lat']
-            longitude = row['lon']
+            latitude = row[lat_col_name]
+            longitude = row[lon_col_name]
             id_var = row[id_col]
             point = ee.Geometry.Point(longitude, latitude)
             filteredCollection = collection.filterBounds(point).filterDate(start_date, end_date)
