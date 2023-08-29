@@ -73,7 +73,7 @@ def gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_TOA', start
 
     count = len(points)
     site = list(range(0, count, 1))    
-
+    n = 1
     values = []
 
     for i in site:
@@ -81,7 +81,7 @@ def gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_TOA', start
         name = points.iloc[i, points.columns.get_loc(id_col)]
         max_name_length = max(len(name) for name in points[id_col])
         padding = ' ' * max_name_length
-        print(f"\rExtracting for {id_col}: {name}{padding}", end='')
+        print(f"\rExtracting for {id_col} [{n}/{count}]: {name}{padding}", end='')
 
         df = gee_subset.gee_subset(product = product,
                                    bands = bands,
@@ -95,6 +95,7 @@ def gee_point_extract(point_filename, product = 'LANDSAT/LC08/C02/T1_TOA', start
         sid =  str(points.iloc[i, points.columns.get_loc(id_col)])
         df[id_col] = sid
         values.append(df)
+        n += 1
         
     df1 = pd.concat(values, ignore_index = True)        
     if 'QA_PIXEL' in bands or 'QA60' in bands:
